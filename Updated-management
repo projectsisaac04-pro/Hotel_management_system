@@ -1,0 +1,130 @@
+#define _WIN32_WINNT 0x0A00
+#include "httplib.h"
+#include <iostream>
+#include <string>
+
+using namespace std;
+
+int Qrooms=0,Qpasta=0,Qburger=0,Qnoodles=0,Qshake=0,Qchickenroll=0;
+int Srooms=0,Spasta=0,Sburger=0,Snoodles=0,Sshake=0,Schickenroll=0;
+int Total_rooms=0,Total_pasta=0,Total_burger=0,Total_noodles=0,Total_shake=0,Total_chickenroll=0;
+
+string getStyles() {
+    return R"(
+        <style>
+            body { background: #1a1a2e; color: white; font-family: Arial; text-align: center; padding: 20px; }
+            h1 { color: #e94560; }
+            input { padding: 8px; margin: 5px; border-radius: 5px; border: none; }
+            button { background: #e94560; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin: 5px; }
+            .card { background: #16213e; padding: 20px; border-radius: 10px; margin: 10px auto; max-width: 500px; }
+            table { margin: auto; border-collapse: collapse; width: 80%; }
+            td, th { padding: 10px; border: 1px solid #e94560; }
+        </style>
+    )";
+}
+
+int main() {
+    httplib::Server svr;
+
+    svr.Get("/", [](const httplib::Request&, httplib::Response& res) {
+        string html = "<html><head>" + getStyles() + "</head><body>";
+        html += "<h1>Hotel Management System</h1>";
+        html += "<div class='card'><h2>Setup Inventory</h2>";
+        html += "<form action='/setup' method='get'>";
+        html += "Rooms: <input type='number' name='rooms' value='0'><br>";
+        html += "Pasta: <input type='number' name='pasta' value='0'><br>";
+        html += "Burger: <input type='number' name='burger' value='0'><br>";
+        html += "Noodles: <input type='number' name='noodles' value='0'><br>";
+        html += "Shake: <input type='number' name='shake' value='0'><br>";
+        html += "Chicken Roll: <input type='number' name='chickenroll' value='0'><br><br>";
+        html += "<button type='submit'>Start Hotel</button>";
+        html += "</form></div></body></html>";
+        res.set_content(html, "text/html");
+    });
+
+    svr.Get("/setup", [](const httplib::Request& req, httplib::Response& res) {
+        Qrooms = stoi(req.get_param_value("rooms"));
+        Qpasta = stoi(req.get_param_value("pasta"));
+        Qburger = stoi(req.get_param_value("burger"));
+        Qnoodles = stoi(req.get_param_value("noodles"));
+        Qshake = stoi(req.get_param_value("shake"));
+        Qchickenroll = stoi(req.get_param_value("chickenroll"));
+        res.set_redirect("/menu");
+    });
+
+    svr.Get("/menu", [](const httplib::Request&, httplib::Response& res) {
+        string html = "<html><head>" + getStyles() + "</head><body>";
+        html += "<h1>Hotel Menu</h1><div class='card'>";
+        html += "<a href='/order/rooms'><button>1. Rooms (Rs.1200)</button></a><br>";
+        html += "<a href='/order/pasta'><button>2. Pasta (Rs.1200)</button></a><br>";
+        html += "<a href='/order/burger'><button>3. Burger (Rs.1200)</button></a><br>";
+        html += "<a href='/order/noodles'><button>4. Noodles (Rs.1200)</button></a><br>";
+        html += "<a href='/order/shake'><button>5. Shake (Rs.1200)</button></a><br>";
+        html += "<a href='/order/chickenroll'><button>6. Chicken Roll (Rs.1200)</button></a><br>";
+        html += "<a href='/sales'><button>7. Sales Report</button></a>";
+        html += "</div></body></html>";
+        res.set_content(html, "text/html");
+    });
+
+    svr.Get("/order/:item", [](const httplib::Request& req, httplib::Response& res) {
+        string item = req.path_params.at("item");
+        string html = "<html><head>" + getStyles() + "</head><body>";
+        html += "<h1>Order " + item + "</h1><div class='card'>";
+        html += "<form action='/process/" + item + "' method='get'>";
+        html += "Enter Quantity: <input type='number' name='qty'><br><br>";
+        html += "<button type='submit'>Order</button> ";
+        html += "<a href='/menu'><button type='button'>Back</button></a>";
+        html += "</form></div></body></html>";
+        res.set_content(html, "text/html");
+    });
+
+    svr.Get("/process/:item", [](const httplib::Request& req, httplib::Response& res) {
+        string item = req.path_params.at("item");
+        int quant = stoi(req.get_param_value("qty"));
+        string msg;
+
+        if (item == "rooms") {
+            if (Qrooms - Srooms >= quant) { Srooms += quant; Total_rooms += quant*1200; msg = to_string(quant) + " Rooms alloted! Total: Rs." + to_string(quant*1200); }
+            else msg = "Only " + to_string(Qrooms-Srooms) + " rooms remaining!";
+        } else if (item == "pasta") {
+            if (Qpasta - Spasta >= quant) { Spasta += quant; Total_pasta += quant*1200; msg = to_string(quant) + " Pasta served! Total: Rs." + to_string(quant*1200); }
+            else msg = "Only " + to_string(Qpasta-Spasta) + " pasta remaining!";
+        } else if (item == "burger") {
+            if (Qburger - Sburger >= quant) { Sburger += quant; Total_burger += quant*1200; msg = to_string(quant) + " Burgers served! Total: Rs." + to_string(quant*1200); }
+            else msg = "Only " + to_string(Qburger-Sburger) + " burgers remaining!";
+        } else if (item == "noodles") {
+            if (Qnoodles - Snoodles >= quant) { Snoodles += quant; Total_noodles += quant*1200; msg = to_string(quant) + " Noodles served! Total: Rs." + to_string(quant*1200); }
+            else msg = "Only " + to_string(Qnoodles-Snoodles) + " noodles remaining!";
+        } else if (item == "shake") {
+            if (Qshake - Sshake >= quant) { Sshake += quant; Total_shake += quant*1200; msg = to_string(quant) + " Shakes served! Total: Rs." + to_string(quant*1200); }
+            else msg = "Only " + to_string(Qshake-Sshake) + " shakes remaining!";
+        } else if (item == "chickenroll") {
+            if (Qchickenroll - Schickenroll >= quant) { Schickenroll += quant; Total_chickenroll += quant*1200; msg = to_string(quant) + " Chicken Rolls served! Total: Rs." + to_string(quant*1200); }
+            else msg = "Only " + to_string(Qchickenroll-Schickenroll) + " chicken rolls remaining!";
+        }
+
+        string html = "<html><head>" + getStyles() + "</head><body>";
+        html += "<div class='card'><h2>" + msg + "</h2>";
+        html += "<a href='/menu'><button>Back to Menu</button></a>";
+        html += "</div></body></html>";
+        res.set_content(html, "text/html");
+    });
+
+    svr.Get("/sales", [](const httplib::Request&, httplib::Response& res) {
+        string html = "<html><head>" + getStyles() + "</head><body>";
+        html += "<h1>Sales Report</h1><table>";
+        html += "<tr><th>Item</th><th>Stock</th><th>Sold</th><th>Remaining</th><th>Collection</th></tr>";
+        html += "<tr><td>Rooms</td><td>" + to_string(Qrooms) + "</td><td>" + to_string(Srooms) + "</td><td>" + to_string(Qrooms-Srooms) + "</td><td>Rs." + to_string(Total_rooms) + "</td></tr>";
+        html += "<tr><td>Pasta</td><td>" + to_string(Qpasta) + "</td><td>" + to_string(Spasta) + "</td><td>" + to_string(Qpasta-Spasta) + "</td><td>Rs." + to_string(Total_pasta) + "</td></tr>";
+        html += "<tr><td>Burger</td><td>" + to_string(Qburger) + "</td><td>" + to_string(Sburger) + "</td><td>" + to_string(Qburger-Sburger) + "</td><td>Rs." + to_string(Total_burger) + "</td></tr>";
+        html += "<tr><td>Noodles</td><td>" + to_string(Qnoodles) + "</td><td>" + to_string(Snoodles) + "</td><td>" + to_string(Qnoodles-Snoodles) + "</td><td>Rs." + to_string(Total_noodles) + "</td></tr>";
+        html += "<tr><td>Shake</td><td>" + to_string(Qshake) + "</td><td>" + to_string(Sshake) + "</td><td>" + to_string(Qshake-Sshake) + "</td><td>Rs." + to_string(Total_shake) + "</td></tr>";
+        html += "<tr><td>Chicken Roll</td><td>" + to_string(Qchickenroll) + "</td><td>" + to_string(Schickenroll) + "</td><td>" + to_string(Qchickenroll-Schickenroll) + "</td><td>Rs." + to_string(Total_chickenroll) + "</td></tr>";
+        html += "<tr><td colspan='4'><b>Grand Total</b></td><td>Rs." + to_string(Total_rooms+Total_pasta+Total_burger+Total_noodles+Total_shake+Total_chickenroll) + "</td></tr>";
+        html += "</table><br><a href='/menu'><button>Back to Menu</button></a></body></html>";
+        res.set_content(html, "text/html");
+    });
+
+    cout << "Running on http://localhost:8080" << endl;
+    svr.listen("0.0.0.0", 8080);
+}
